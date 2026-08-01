@@ -1,0 +1,20 @@
+# TREC RAG 2026 Retrieval Task - Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core
+requests>=2.31.0
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+
+# Query processing
+spacy>=3.7.0
+
+# Reranking (cross-encoder) - GPU recommended but CPU works
+sentence-transformers>=3.0.0
+torch>=2.0.0
+
+# Lightweight reranking alternative (CPU-friendly)
+flashrank>=0.2.0
+
+# Utilities
+pandas>=2.0.0

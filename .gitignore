@@ -1,0 +1,23 @@
+# API tokens and secrets
+.env.local
+.curlrc.pyserini-rest
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Output
+runs/
+tmp/
+*.log
+
+# Data (large files)
+trec-rag-data/
