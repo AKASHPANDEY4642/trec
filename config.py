@@ -69,3 +69,14 @@ BM25_RAW_RUN = OUTPUT_DIR / "bm25_raw.txt"
 BM25_RERANKED_RUN = OUTPUT_DIR / "bm25_reranked.txt"
 QUERY_REWRITTEN_RUN = OUTPUT_DIR / "query_rewritten_bm25.txt"
 FINAL_SUBMISSION_RUN = OUTPUT_DIR / "final_submission.txt"
+
+# =============================================================================
+# RAG Task Settings
+# =============================================================================
+RAG_TEAM_ID = "IIITDMK"
+RAG_RUN_ID = "IIITDMK_rag"
+RAG_EVIDENCE_DEPTH = 20             # Top-K docs to use as evidence per narrative
+RAG_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"  # Local LLM for answer generation
+RAG_MAX_NEW_TOKENS = 2048           # Max tokens in generated answer
+RAG_DOC_MAX_CHARS = 4000            # Max chars per evidence document in prompt
+RAG_OUTPUT_FILE = OUTPUT_DIR / "rag_output_trec_rag_2026.jsonl"

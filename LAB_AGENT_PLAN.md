@@ -1,39 +1,127 @@
 # LAB AGENT PLAN (For the Lab GPU AI Agent)
 
-Hello AI Agent! When the user is at the lab and asks you to run the retrieval and reranking pipeline, follow these exact steps:
+Hello AI Agent! This document contains the complete workflow for the TREC RAG 2026 project. Follow these exact steps.
 
-## 1. Environment Setup
-The user will clone this repository on the lab machine (Ubuntu with RTX 2000 Ada, 16GB VRAM).
-- Check if `.env.local` exists. If not, ask the user to provide their `PYSERINI_API_TOKEN` and create the `.env.local` file with the contents:
-  `PYSERINI_API_TOKEN=<their_token>`
-- The `trec-rag-data/` folder is ignored by git. If it's missing, run the download scripts or clone the dataset. (It may automatically download if the scripts handle it).
-- Run the setup script to install dependencies:
-  ```bash
-  chmod +x lab_gpu_setup/setup.sh
-  ./lab_gpu_setup/setup.sh
-  ```
+## Lab Machine Specs
+- **GPU**: RTX 2000 Ada Generation (16 GB VRAM)
+- **OS**: Ubuntu
+- **CUDA**: 13.2
 
-## 2. Execute the Pipeline
-You are running on a machine with a powerful GPU (16GB VRAM). Use the `venv` created by the setup script.
-Activate it: `source venv/bin/activate`
+---
 
-Run the pipeline in this order:
-1. **Initial BM25 Retrieval**: `python 01_bm25_retrieve.py`
-   *(This requires `.env.local` with API token and will cache results in `tmp/`)*
-2. **Query Processing**: `python 02_query_processing.py`
-3. **Processed Retrieval**: `python 03_bm25_retrieve_processed.py`
-4. **GPU Reranking (Crucial step!)**: `python 04_rerank.py --gpu`
-   *(Since this machine has a good GPU, we can use the powerful cross-encoders)*
-5. **RRF Fusion**: `python 05_rrf_fusion.py`
-6. **Validate Run**: `python 07_validate_run.py runs/rrf_fused.txt`
+## PHASE 1: RETRIEVAL TASK (Already Completed ✓)
 
-## 3. Results Collection
-After running, the best run will be located at `runs/rrf_fused.txt` (and the reranked run at `runs/bm25_reranked.txt`). Ask the user to submit these to the TREC evalbase!
+These steps have already been run. Skip to Phase 2 unless re-run is needed.
+
+1. `python 01_bm25_retrieve.py` — BM25 retrieval (creates `tmp/bm25_results.json`)
+2. `python 02_query_processing.py` — Query expansion
+3. `python 03_bm25_retrieve_processed.py` — Processed retrieval
+4. `python 04_rerank.py --gpu` — GPU neural reranking
+5. `python 05_rrf_fusion.py` — Reciprocal Rank Fusion
+6. `python 07_validate_run.py runs/rrf_fused.txt` — Validate retrieval run
+
+---
+
+## PHASE 2: RAG TASK (Run This Next)
+
+### Prerequisites
+- `.env.local` must exist with `PYSERINI_API_TOKEN=<token>`
+- `venv` must be active: `source venv/bin/activate`
+- `tmp/bm25_results.json` must exist (from Phase 1)
+- `runs/bm25_reranked.txt` must exist (from Phase 1)
+
+### Step 1: Install RAG Dependencies
+
+```bash
+source venv/bin/activate
+pip install transformers>=4.40.0 accelerate>=0.30.0 bitsandbytes>=0.43.0
+```
+
+**Estimated time**: 5-10 minutes (downloading packages)
+
+### Step 2: Run RAG Answer Generation
+
+```bash
+python 08_rag_generate.py --gpu --evidence-depth 20
+```
+
+**What this does**: For each of the 119 narratives, loads top-20 reranked evidence documents, sends them to Qwen2.5-7B-Instruct (running locally on GPU with 4-bit quantization), and generates a comprehensive cited answer.
+
+**Estimated time**: 4-10 hours (119 narratives × 2-5 min each)
+
+**IMPORTANT RULES FOR THIS STEP**:
+- DO NOT waste tokens/turns polling or setting timers to check if it's done
+- Launch the command and let it finish completely
+- The script prints progress for each narrative to stdout
+- It auto-saves after each narrative (resume-safe)
+- If interrupted, just re-run — it will skip already-processed narratives
+
+**First run will also download the model** (~7GB), which takes 10-15 minutes with good internet.
+
+### Step 3: Validate RAG Output
+
+```bash
+python 09_validate_rag.py
+```
+
+This checks:
+- All 119 narrative IDs present
+- Valid JSONL format
+- Citation indices within bounds
+- Required metadata fields
+
+### Step 4: Validate Retrieval Run (if not done yet)
+
+```bash
+python 07_validate_run.py runs/bm25_reranked.txt
+python 07_validate_run.py runs/rrf_fused.txt
+```
+
+---
+
+## Output Files for Submission
+
+| File | Task | Submit To |
+|------|------|-----------|
+| `runs/bm25_reranked.txt` | Retrieval (R) | https://ir.nist.gov/evalbase |
+| `runs/rrf_fused.txt` | Retrieval (R) | https://ir.nist.gov/evalbase |
+| `runs/rag_output_trec_rag_2026.jsonl` | RAG | https://ir.nist.gov/evalbase |
+
+---
+
+## TREC Submission Format Reminders
+
+### Retrieval Run Format
+```
+<topic_id> Q0 <docid> <rank> <score> <run_tag>
+```
+- Scores MUST be in descending order (trec_eval sorts by score!)
+- Run tag: max 12 alphanumeric characters
+
+### RAG Output Format (JSONL)
+Each line is a JSON object with:
+- `metadata`: team_id, narrative_id, narrative (exact text), run_id, type
+- `references`: list of ClimbMix document IDs
+- `answer`: list of `{text, citations}` objects
+- Citations are 0-indexed into the references list
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `CUDA out of memory` | Model already uses 4-bit quant (~5GB). Kill other GPU processes: `nvidia-smi`, then `kill <PID>` |
+| `bm25_results.json missing` | Re-run `python 01_bm25_retrieve.py` |
+| `No module 'transformers'` | `pip install transformers accelerate bitsandbytes` |
+| `No module 'bitsandbytes'` | `pip install bitsandbytes` (Linux only, not Windows) |
+| Script crashed mid-run | Just re-run `python 08_rag_generate.py --gpu` — it resumes automatically |
+| `runs/bm25_reranked.txt` missing | Re-run `python 04_rerank.py --gpu` |
 
 ## Note on Ignored Files
-The following files are ignored via `.gitignore` and must be regenerated or copied manually on the lab machine:
-- `.env.local` (API credentials)
-- `tmp/` (Cached results from BM25)
-- `runs/` (Final run outputs)
-- `trec-rag-data/` (Large data files)
-- `venv/` / `__pycache__/` (Python environments and caches)
+These files are in `.gitignore` and must be created/generated on the lab machine:
+- `.env.local` — API credentials (create manually with token)
+- `tmp/` — Cached BM25 results (generated by 01_bm25_retrieve.py)
+- `runs/` — All output run files (generated by pipeline scripts)
+- `trec-rag-data/` — Test data (clone: `git clone https://github.com/TREC-RAG/trec-rag-data.git`)
+- `venv/` / `__pycache__/` — Python environment

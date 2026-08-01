@@ -18,3 +18,8 @@ flashrank>=0.2.0
 
 # Utilities
 pandas>=2.0.0
+
+# RAG Answer Generation (Step 8) — needed on lab GPU machine
+transformers>=4.40.0
+accelerate>=0.30.0
+bitsandbytes>=0.43.0
