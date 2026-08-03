@@ -167,7 +167,7 @@ def load_model(model_name: str, use_gpu: bool = True):
     if use_gpu and torch.cuda.is_available():
         device = "cuda"
         gpu_name = torch.cuda.get_device_name(0)
-        vram = torch.cuda.get_device_properties(0).total_mem / (1024**3)
+        vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         print(f"[MODEL] GPU: {gpu_name} ({vram:.1f} GB VRAM)")
 
         bnb_config = BitsAndBytesConfig(
