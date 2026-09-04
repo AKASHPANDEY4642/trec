@@ -1,5 +1,0 @@
-{
-  "summary": "Complete step-by-step walkthrough for setting up and running the TREC RAG 2026 Retrieval Task pipeline. Covers Python installation, project setup, API token acquisition, running each pipeline step, and final submission process. Includes all file locations, commands, and what to expect at each step.",
-  "updatedAt": "2026-07-31T11:22:15.424354900Z",
-  "userFacing": true
-}
